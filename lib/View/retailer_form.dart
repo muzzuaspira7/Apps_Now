@@ -25,10 +25,7 @@ class _RetailerFormState extends State<RetailerForm> {
   final TextEditingController addressController = TextEditingController();
   final TextEditingController contactController = TextEditingController();
   final TextEditingController locationController = TextEditingController();
-
-  bool _hasFocus = false;
-  bool widgetBuild = false;
-
+  // bool widgetBuild = false;
   final DatabaseService _databaseService = DatabaseService.instance;
 
   @override
@@ -104,7 +101,6 @@ class _RetailerFormState extends State<RetailerForm> {
                             buttonName: 'Get Location',
                             onPressed: () {
                               print('CLICK');
-                              // getLocation()
                               _getCurrentLocation(context);
                             },
                           ),
@@ -194,7 +190,7 @@ class _RetailerFormState extends State<RetailerForm> {
 
     setState(() {
       locationController.text = '${position.latitude}, ${position.longitude}';
-      widgetBuild = true;
+      // widgetBuild = true;
     });
   }
 }

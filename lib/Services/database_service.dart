@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ffi';
 import 'package:now_apps/Model/my_order.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
@@ -24,19 +25,26 @@ class DatabaseService {
   final String _RetailerNameColumnName = 'r_name';
   final String _RetailerPhoneColumnName = 'r_phone';
   final String _RetailerAddressColumnName = 'r_address';
-  final String _RetailerLatLongColumnName = 'r_latLong';
+  // final String _RetailerLatLongColumnName = 'r_latLong';
+
+  final String _RetailerLatitudeColumnName = 'r_lat';
+  final String _RetailerLongitudeColumnName = 'r_long';
+
   // For the cart section
   final String _CartName = 'my_Cart';
   final String _CartIdColumnName = 'c_id';
   final String _CartNameColumnName = 'c_name';
   final String _CartCountColumnName = 'c_count';
   final String _CartPriceColumnName = 'c_price';
+  final String _CartRetailerColumnName = 'c_retailer';
   // For the order section
   final String _OrderName = 'my_order';
   final String _OrderIdColumnName = 'o_id';
   final String _OrderNameColumnName = 'o_name';
   final String _OrderCountColumnName = 'o_count';
   final String _OrderPriceColumnName = 'o_price';
+  final String _OrderRetailerColumnName = 'o_retailer';
+
   // Definedd db
   static Database? _db;
   Future<Database> getDatabase() async {
@@ -65,7 +73,8 @@ class DatabaseService {
             $_RetailerNameColumnName TEXT NOT NULL,
             $_RetailerPhoneColumnName TEXT NOT NULL,
             $_RetailerAddressColumnName TEXT NOT NULL,
-            $_RetailerLatLongColumnName TEXT NOT NULL
+             $_RetailerLatitudeColumnName REAL NOT NULL,
+            $_RetailerLongitudeColumnName REAL NOT NULL
           )
         ''');
         // Creating Products table
@@ -84,7 +93,8 @@ class DatabaseService {
             $_CartIdColumnName TEXT NOT NULL,
             $_CartNameColumnName TEXT NOT NULL,
             $_CartCountColumnName INTEGER NOT NULL,
-            $_CartPriceColumnName INTEGER NOT NULL
+            $_CartPriceColumnName INTEGER NOT NULL,
+            $_CartRetailerColumnName TEXT NOT NULL
           )
         ''');
         // Creating order table
@@ -94,7 +104,8 @@ class DatabaseService {
             $_OrderIdColumnName TEXT NOT NULL,
             $_OrderNameColumnName TEXT NOT NULL,
             $_OrderCountColumnName INTEGER NOT NULL,
-            $_OrderPriceColumnName INTEGER NOT NULL
+            $_OrderPriceColumnName INTEGER NOT NULL,
+           $_OrderRetailerColumnName TEXT NOT NULL
           )
         ''');
       },
@@ -107,6 +118,15 @@ class DatabaseService {
     if (_db != null) return _db!;
     _db = await getDatabase();
     return _db!;
+  }
+
+  Future<void> deleteDb() async {
+    final databaseDirPath = await getDatabasesPath();
+    final databasePath = join(databaseDirPath, "master_db.db");
+
+    await deleteDatabase(databasePath);
+    _db = null;
+    print("Deleted DB");
   }
 
   // Add user to Users table
@@ -125,12 +145,17 @@ class DatabaseService {
   Future<void> addRetailRegister(
       String name, String phone, String address, String latLong) async {
     final db = await database;
+    List<String> parts = latLong.split(',');
+    double latitude = double.parse(parts[0].trim());
+    double longitude = double.parse(parts[1].trim());
     try {
       await db.insert(_RetailerTableName, {
         _RetailerNameColumnName: name,
         _RetailerPhoneColumnName: phone,
         _RetailerAddressColumnName: address,
-        _RetailerLatLongColumnName: latLong
+        // _RetailerLatLongColumnName: latLong
+        _RetailerLatitudeColumnName: latitude,
+        _RetailerLongitudeColumnName: longitude
       });
       print("Inserted retailer: $name");
     } catch (e) {
@@ -162,20 +187,40 @@ class DatabaseService {
     print(data);
     List<RetailerRegister> registerRetailer = data
         .map((e) => RetailerRegister(
+              latitude: e[_RetailerLatitudeColumnName] as double,
+              longitude: e[_RetailerLongitudeColumnName] as double,
               name: e[_RetailerNameColumnName] as String,
               phone: e[_RetailerPhoneColumnName] as String,
-              latLong: e[_RetailerLatLongColumnName] as String,
               address: e[_RetailerAddressColumnName] as String,
             ))
         .toList();
     return registerRetailer;
   }
 
+  // Fetche products from API and return as product model list.
+  Future<List<ProductModel>> fetchProductsFromAPI() async {
+    final apiUrl = 'https://www.jsonkeeper.com/b/GCQS';
+    final response = await http.get(Uri.parse(apiUrl));
+    if (response.statusCode == 200) {
+      final jsonData = jsonDecode(response.body);
+      final productsList =
+          ProductsListModel.fromJson(jsonData).data?.products ?? [];
+      return productsList
+          .map((product) => ProductModel(
+                prodId: product.prodId ?? '',
+                prodName: product.prodName ?? '',
+                prodPrice: product.prodRkPrice ?? '50.00',
+              ))
+          .toList();
+    } else {
+      throw Exception('Failed to load products');
+    }
+  }
+
   // Add list of products to Products table
   Future<void> addProducts(List<ProductModel> products) async {
     final db = await database;
     final batch = db.batch();
-
     for (var product in products) {
       // Check if the product already exists in the database
       final existingProducts = await db.query(
@@ -183,7 +228,6 @@ class DatabaseService {
         where: 'prodId = ?',
         whereArgs: [product.prodId],
       );
-
       // If the product does not exist, add it to the batch
       if (existingProducts.isEmpty) {
         batch.insert('Products', {
@@ -212,26 +256,6 @@ class DatabaseService {
     }).toList();
   }
 
-  // Fetche products from API and return as product model list.
-  Future<List<ProductModel>> fetchProductsFromAPI() async {
-    final apiUrl = 'https://www.jsonkeeper.com/b/GCQS';
-    final response = await http.get(Uri.parse(apiUrl));
-    if (response.statusCode == 200) {
-      final jsonData = jsonDecode(response.body);
-      final productsList =
-          ProductsListModel.fromJson(jsonData).data?.products ?? [];
-      return productsList
-          .map((product) => ProductModel(
-                prodId: product.prodId ?? '',
-                prodName: product.prodName ?? '',
-                prodPrice: product.prodRkPrice ?? '50.00',
-              ))
-          .toList();
-    } else {
-      throw Exception('Failed to load products');
-    }
-  }
-
   // checking the product is on the cart or not
   Future<bool> isProductInCart(String productId) async {
     final db = await database;
@@ -244,7 +268,8 @@ class DatabaseService {
   }
 
   // Add a product to the cart with given id,( name and count, price)
-  Future<void> addCart(String id, String name, int count, int price) async {
+  Future<void> addCart(
+      String id, String name, int count, int price, String retailer) async {
     final db = await database;
     try {
       await db.insert(_CartName, {
@@ -252,6 +277,7 @@ class DatabaseService {
         _CartNameColumnName: name,
         _CartCountColumnName: count,
         _CartPriceColumnName: price,
+        _CartRetailerColumnName: retailer,
       });
       print('Cart added');
     } catch (e) {
@@ -261,7 +287,8 @@ class DatabaseService {
   }
 
   // Add product as order
-  Future<void> addOrder(String id, String name, int count, int price) async {
+  Future<void> addOrder(
+      String id, String name, int count, int price, String retailer) async {
     final db = await database;
     try {
       await db.insert(_OrderName, {
@@ -269,6 +296,7 @@ class DatabaseService {
         _OrderNameColumnName: name,
         _OrderCountColumnName: count,
         _OrderPriceColumnName: price,
+        _OrderRetailerColumnName: retailer
       });
       print('Order added successfullyy');
     } catch (e) {
@@ -288,9 +316,9 @@ class DatabaseService {
               id: e[_CartIdColumnName] as String,
               count: e[_CartCountColumnName] as int,
               price: e[_CartPriceColumnName] as int,
+              retailer: e[_CartRetailerColumnName] as String,
             ))
         .toList();
-
     return cart;
   }
 
@@ -305,6 +333,7 @@ class DatabaseService {
               id: e[_OrderIdColumnName] as String,
               count: e[_OrderCountColumnName] as int,
               price: e[_OrderPriceColumnName] as int,
+              retailer: e[_OrderRetailerColumnName] as String,
             ))
         .toList();
 

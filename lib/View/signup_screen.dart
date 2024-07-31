@@ -25,7 +25,7 @@ class _LoginSignUpScreenState extends State<LoginSignUpScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.bottomRight,
             end: Alignment.topLeft,
@@ -63,14 +63,14 @@ class _LoginSignUpScreenState extends State<LoginSignUpScreen> {
                   ),
                   const SizedBox(height: 10),
                   isNewUser ? buildSignUpForm() : buildLoginForm(),
-                  SizedBox(height: 10),
+                  const SizedBox(height: 10),
                   Text(
                     isNewUser
                         ? 'Already Have an Account?'
                         : 'Don\'t You Have an Account?',
                     style: GoogleFonts.openSans(fontSize: 14),
                   ),
-                  SizedBox(height: 5),
+                  const SizedBox(height: 5),
                   InkWell(
                     onTap: () {
                       setState(() {
@@ -132,7 +132,7 @@ class _LoginSignUpScreenState extends State<LoginSignUpScreen> {
 
             if (userExists) {
               print('Youre exists...');
-              // Optionally, you can show a message to the user
+
               Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -146,7 +146,7 @@ class _LoginSignUpScreenState extends State<LoginSignUpScreen> {
             } else {
               print('User does not exist');
               ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Please Create an Account')));
+                  const SnackBar(content: Text('Please Create an Account')));
             }
           },
         ),
@@ -201,12 +201,11 @@ class _LoginSignUpScreenState extends State<LoginSignUpScreen> {
                   await FirebaseFirestore.instance.collection('users').get();
               bool userExists = usersSnapshot.docs
                   .any((doc) => doc['phone'] == numberController.text);
-
               if (userExists) {
                 print('Already you\'re a member');
-                // Optionally, you can show a message to the user
+
                 ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Already you\'re a member')));
+                    const SnackBar(content: Text('Already you\'re a member')));
               } else {
                 print('User does not exist');
                 Navigator.push(

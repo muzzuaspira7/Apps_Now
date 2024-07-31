@@ -23,7 +23,6 @@ class ProductsListModel {
 
 class ProductData {
   ProductData({this.products});
-
   ProductData.fromJson(final Map<String, dynamic> json) {
     if (json['products'] != null) {
       products = <Products>[];

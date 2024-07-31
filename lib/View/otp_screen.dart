@@ -80,13 +80,10 @@ class _OtpScreenState extends State<OtpScreen> {
                 ),
               ),
               const SizedBox(height: 30),
-
               Pinput(
                 controller: _otpController,
                 length: 6,
               ),
-
-
               const SizedBox(height: 20),
               CustomButton(
                 buttonName: 'Proceed to go',
@@ -95,7 +92,6 @@ class _OtpScreenState extends State<OtpScreen> {
                   if (otpCode.length == 6) {
                     ConfirmCode(otpCode);
                     _otpController;
-                    
                   } else {
                     print('Invalid OTP length');
                   }
